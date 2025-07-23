@@ -3,7 +3,7 @@
 SCRIPT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 init(){
-  tmux source-file ${SCRIPT_ROOT}/default.tmux
+  tmux source-file "${SCRIPT_ROOT}"/default.tmux
 
   # Options for tmux_kubecontext state
   tmux set-option -goq @tmux_kubecontext_status_updated_time 0
@@ -18,7 +18,7 @@ set_tmux_option(){
 }
 
 get_tmux_option(){
-  tmux show-option -gqv $1
+  tmux show-option -gqv "$1"
 }
 
 # getter for user options
@@ -31,9 +31,10 @@ get_kubectl_binary() {
 }
 
 symbol_enabled(){
-  local enabled=$(get_tmux_option "@tmux_kubecontext_symbol_enable")
+  enabled=$(get_tmux_option "@tmux_kubecontext_symbol_enable")
+  local enabled
   [[ $enabled == true ]]
-} 
+}
 
 get_symbol() {
   get_tmux_option "@tmux_kubecontext_symbol"
@@ -56,18 +57,20 @@ get_separator_fg_color(){
 }
 
 namespace_enabled(){
-  local enabled=$(get_tmux_option "@tmux_kubecontext_namespace_enable")
+  enabled=$(get_tmux_option "@tmux_kubecontext_namespace_enable")
+  local enabled
   [[ $enabled == true ]]
-} 
+}
 
 get_namespace_fg_color(){
   get_tmux_option "@tmux_kubecontext_namespace_fg_color"
 }
 
 error_enabled(){
-  local enabled=$(get_tmux_option "@tmux_kubecontext_error_enable")
+  enabled=$(get_tmux_option "@tmux_kubecontext_error_enable")
+  local enabled
   [[ $enabled == true ]]
-} 
+}
 
 get_error_prefix(){
   get_tmux_option "@tmux_kubecontext_error_prefix"
@@ -78,7 +81,8 @@ get_error_fg_color(){
 }
 
 lock_enabled(){
-  local enabled=$(get_tmux_option "@tmux_kubecontext_lock_enable")
+  enabled=$(get_tmux_option "@tmux_kubecontext_lock_enable")
+  local enabled
   [[ $enabled == true ]]
 }
 
@@ -113,7 +117,8 @@ reset_status_updated_time(){
 }
 
 update_status_updated_time_to_now(){
-  local updated_time=$(date +%s)
+  updated_time=$(date +%s)
+  local updated_time
   set_status_updated_time "${updated_time}"
 }
 
@@ -146,8 +151,8 @@ try_to_lock(){
   local lockfile
   [[ -z $TMPDIR ]] && TMPDIR=${TMPDIR:-/tmp}
   lockfile=${TMPDIR}/tmux_kubeconfig.lock
-  if ln -s /dev/null ${lockfile} >/dev/null 2>&1; then
-    trap "rm ${lockfile}" EXIT
+  if ln -s /dev/null "${lockfile}" >/dev/null 2>&1; then
+    trap rm "${lockfile}" EXIT
     return 0
   fi
   return 1
@@ -157,7 +162,7 @@ file_order_changed(){
   local files1=${1//:/ } files2=${2//:/ }
 
   for ((i=0; i<${#files1[@]}; i++)); do
-    [[ ${files1[${i}]} != ${files2[${i}]} ]] && return 0
+    [[ ${files1[${i}]} != "${files2[${i}]}" ]] && return 0
   done
 
   return 1
@@ -182,9 +187,12 @@ should_update_context(){
 
   # Check updated kubeconfig files
   local f files t=0 exitcode=0 found=0 updated=0
-  local kubeconfig=$(get_kubeconfig)
-  local last_kubeconfig=$(get_status_last_kubeconfig)
-  local last_updated_time=$(get_status_updated_time)
+  kubeconfig=$(get_kubeconfig)
+  local kubeconfig
+  last_kubeconfig=$(get_status_last_kubeconfig)
+  local last_kubeconfig
+  last_updated_time=$(get_status_updated_time)
+  local last_updated_time
 
   # When KUBECONFIG order is changed, reset status updated time.
   # When order changed, it has possibility that reffered contexts are changed.
@@ -194,9 +202,9 @@ should_update_context(){
   set_status_last_kubeconfig "${kubeconfig}"
 
   # Check updated kubeconfig exists
-  files=(${kubeconfig//:/ })
+  files=("${kubeconfig//:/ }")
   ## If not set KUBECONFIG, check ${HOME}/.kube/config.
-  [[ ${#files[@]} == 0 ]] && files=(${files[@]} "${HOME}/.kube/config")
+  [[ ${#files[@]} == 0 ]] && files=("${files[@]}" "${HOME}/.kube/config")
   for f in "${files[@]}"; do
     if [[ ! -e "${f}" ]]; then
       set_status_error "\"${f}\" was not found"
@@ -204,7 +212,7 @@ should_update_context(){
       return 1
     fi
 
-    t=$(${stat_cmd} ${f} 2>/dev/null)
+    t=$(${stat_cmd} "${f}" 2>/dev/null)
     exitcode=$?
     if [[ $exitcode != 0 ]]; then
       set_status_error "stat command was failed"
@@ -236,12 +244,13 @@ should_update_context(){
 
 update_context(){
   # Support KUBECONFIG env
-  export KUBECONFIG=$(get_kubeconfig)
+  KUBECONFIG=$(get_kubeconfig)
+  export KUBECONFIG
 
   # Confirm kubectl binary is executable
   local kubectl_bin exitcode=0
   kubectl_bin=$(get_kubectl_binary)
-  if [[ ! -x "$(command -v ${kubectl_bin})" ]]; then
+  if [[ ! -x "$(command -v "${kubectl_bin}")" ]]; then
     set_status_error "executable kubectl command was not found"
     return
   fi
@@ -254,7 +263,7 @@ update_context(){
     set_status_error "failed to get context with kubectl"
     return
   fi
-  set_status_context $context
+  set_status_context "$context"
 
   # Update namespace
   local namespace
@@ -266,7 +275,7 @@ update_context(){
       return
     fi
     namespace="${namespace:-default}"
-    set_status_namespace $namespace
+    set_status_namespace "$namespace"
   fi
 
   # If updated context correctly, update updated_time and clear error.
@@ -296,18 +305,24 @@ main() {
 
   local result
 
-  local context=$(get_status_context)
-  local namespace=$(get_status_namespace)
-  local symbol=$(get_symbol)
-  local separator=$(get_separator)
-  local error=$(get_status_error)
-  local error_prefix=$(get_error_prefix)
+  context=$(get_status_context)
+  local context
+  namespace=$(get_status_namespace)
+  local namespace
+  symbol=$(get_symbol)
+  local symbol
+  separator=$(get_separator)
+  local separator
+  error=$(get_status_error)
+  local error
+  error_prefix=$(get_error_prefix)
+  local error_prefix
 
-  local context_fg_color=$(get_context_fg_color)
-  local namespace_fg_color=$(get_namespace_fg_color)
-  local symbol_fg_color=$(get_symbol_fg_color)
-  local separator_fg_color=$(get_separator_fg_color)
-  local error_fg_color=$(get_error_fg_color)
+   context_fg_color=$(get_context_fg_color)
+   namespace_fg_color=$(get_namespace_fg_color)
+   symbol_fg_color=$(get_symbol_fg_color)
+   separator_fg_color=$(get_separator_fg_color)
+   error_fg_color=$(get_error_fg_color)
 
   # Symbol
   if symbol_enabled; then
